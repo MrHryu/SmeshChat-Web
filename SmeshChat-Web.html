@@ -1,0 +1,601 @@
+[11.07.2026 22:18] its320gf: <!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmeshChat — Смешарики</title>
+    <style>
+        :root {
+            --bg: #FFF8F0;
+            --card: #FFFFFF;
+            --text: #3D2C1E;
+            --text2: #7A6B5D;
+            --yellow: #FFD93D;
+            --orange: #FF8C42;
+            --radius: 20px;
+            --shadow: 0 4px 15px rgba(0,0,0,0.06);
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #FFF0E8 0%, #FDE8F0 30%, #E8F4FD 60%, #FFF8E8 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+            color: var(--text);
+        }
+        .app {
+            width: 100%;
+            max-width: 430px;
+            background: rgba(255,255,255,0.8);
+            backdrop-filter: blur(20px);
+            border-radius: 32px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+            overflow: hidden;
+            display: flex;
+            height: 90vh;
+            max-height: 850px;
+            border: 1px solid rgba(255,255,255,0.7);
+        }
+        .sidebar {
+            width: 70px;
+            background: rgba(255,245,235,0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 5px;
+            gap: 20px;
+            border-right: 1px solid rgba(0,0,0,0.05);
+        }
+        .sidebar-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 11px;
+            color: var(--text2);
+            cursor: pointer;
+            gap: 4px;
+            transition: 0.2s;
+        }
+        .sidebar-item.active {
+            color: var(--orange);
+            font-weight: 700;
+        }
+        .sidebar-item span { font-size: 24px; }
+        .main-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .top-bar {
+            padding: 12px 16px;
+            background: linear-gradient(135deg, #FFD93D, #FFB347);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-weight: 700;
+            font-size: 18px;
+            color: #5E3A1C;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: rgba(255,255,250,0.6);
+        }
+        button {
+            background: #FFD93D;
+            border: none;
+            padding: 12px 18px;
+            border-radius: 40px;
+            font-weight: 600;
+            cursor: pointer;
+            color: #5E3A1C;
+            font-size: 15px;
+            box-shadow: 0 4px 10px rgba(255,180,0,0.3);
+            width: 100%;
+            margin: 4px 0;
+        }
+        button.secondary { background: #E0D6C8; }
+        input, textarea {
+            width: 100%;
+            padding: 14px 18px;
+            border-radius: 40px;
+            border: 1px solid #E0D6C8;
+            background: white;
+            font-size: 16px;
+            margin: 6px 0;
+            outline: none;
+        }
+        .card {
+            background: white;
+            border-radius: var(--radius);
+            padding: 16px;
+            box-shadow: var(--shadow);
+        }
+        .chat-item {
+            display: flex;
+            align-items: center;
+[11.07.2026 22:18] its320gf: gap: 12px;
+            padding: 12px;
+            border-radius: 18px;
+            background: white;
+            cursor: pointer;
+            margin-bottom: 6px;
+        }
+        .avatar {
+            width: 44px; height: 44px;
+            border-radius: 50%;
+            background: #4DC9F6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+        }
+        .hidden { display: none !important; }
+        .post {
+            background: white;
+            border-radius: 16px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+        .post-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 6px;
+        }
+    </style>
+</head>
+<body>
+<div class="app" id="app">
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-item active" data-page="wall"><span>📰</span>Стена</div>
+        <div class="sidebar-item" data-page="profile"><span>😊</span>Профиль</div>
+        <div class="sidebar-item" data-page="messages"><span>💬</span>Сообщения</div>
+        <div class="sidebar-item" data-page="market"><span>🏷️</span>Маркет</div>
+        <div class="sidebar-item" data-page="settings"><span>⚙️</span>Настройки</div>
+    </div>
+    <div class="main-area">
+        <div class="top-bar">
+            <div class="logo"><span>🥕</span> SmeshChat</div>
+            <div id="pageTitle">Стена</div>
+            <div></div>
+        </div>
+        <div class="content" id="mainContent"></div>
+    </div>
+</div>
+<script>
+    (function() {
+        const STORAGE_KEY = 'smeshChatWallV1';
+        let appState = {
+            users: {},
+            currentUser: null,
+            channels: [],
+            chats: {},
+            posts: [],
+            giftsSent: []
+        };
+
+        const specialPhone1 = '+79217333333';
+        const specialPassword1 = 'RaZrAbSmEsHcHaTa@#$_&777';
+        const specialPhone2 = '+79291222222';
+        const specialPassword2 = 'N@iven$uperP@ssw0rd!2024';
+
+        function initData() {
+            if (!localStorage.getItem(STORAGE_KEY)) {
+                appState.users[specialPhone1] = {
+                    phone: specialPhone1, password: specialPassword1, username: 'kopatich',
+                    displayName: 'Копатыч', avatar: '🐻', balance: Infinity, subscription: 'eternal',
+                    ownedNFTs: ['🥕 Золотая морковь','🌟 Крош NFT','🦔 Ёжик OG','🐻 Копатыч Rare'],
+                    gifts: ['🎁 Подарок от Нюши','💎 Алмазный смешарик'],
+                    usernames: ['kopatich','smesh','smeshchat','username','user','chat'],
+                    stories: [], music: [], files: [], contacts: []
+                };
+                appState.users[specialPhone2] = {
+                    phone: specialPhone2, password: specialPassword2, username: 'naiven',
+                    displayName: 'Найвен', avatar: '🐒', balance: Infinity, subscription: 'eternal',
+                    ownedNFTs: ['🍌 Банановый NFT','🐒 Обезьяний король'],
+                    gifts: ['🎀 Подарок от друзей'],
+                    usernames: ['the','cool','monkey','naiven'],
+                    stories: [], music: [], files: [], contacts: []
+                };
+                appState.channels.push({
+                    id: 'ch1', name: 'СмешНовости', username: 'smeshnews', avatar: '📰',
+                    owner: specialPhone1, admins: [specialPhone1], messages: []
+                });
+                appState.posts.push({
+                    id: 'p1', author: specialPhone1, text: '🥕 Добро пожаловать в SmeshChat! Это наша новая стена.',
+                    time: Date.now(), likes: []
+                });
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+            } else {
+                appState = JSON.parse(localStorage.getItem(STORAGE_KEY));
+            }
+        }
+        function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(appState)); }
+        initData();
+[11.07.2026 22:18] its320gf: const mainContent = document.getElementById('mainContent');
+        const pageTitle = document.getElementById('pageTitle');
+        const sidebarItems = document.querySelectorAll('.sidebar-item');
+        let currentPage = 'wall';
+
+        function setActivePage(page) {
+            currentPage = page;
+            sidebarItems.forEach(i => i.classList.remove('active'));
+            document.querySelector(.sidebar-item[data-page="${page}"]).classList.add('active');
+            pageTitle.innerText = page === 'wall' ? 'Стена' : page === 'profile' ? 'Профиль' : page === 'messages' ? 'Сообщения' : page === 'market' ? 'Маркет' : 'Настройки';
+            renderPage(page);
+        }
+
+        sidebarItems.forEach(item => {
+            item.addEventListener('click', () => setActivePage(item.dataset.page));
+        });
+
+        function renderPage(page) {
+            if (!appState.currentUser && page !== 'wall') { renderLogin(); return; }
+            switch(page) {
+                case 'wall': renderWall(); break;
+                case 'profile': renderProfile(); break;
+                case 'messages': renderMessagesList(); break;
+                case 'market': renderMarket(); break;
+                case 'settings': renderSettings(); break;
+            }
+        }
+
+        function renderLogin() {
+            mainContent.innerHTML = 
+                <div style="text-align:center; padding:20px;">
+                    <h2>Вход</h2>
+                    <input type="tel" id="phoneInput" placeholder="+7 (921) 733-33-33">
+                    <input type="password" id="passInput" placeholder="Пароль">
+                    <button id="loginBtn">Войти</button>
+                    <button class="secondary" id="regLink">Регистрация</button>
+                </div>
+            ;
+            document.getElementById('loginBtn').onclick = () => {
+                let phone = document.getElementById('phoneInput').value.replace(/[\s()-]/g, '');
+                if (!phone.startsWith('+')) phone = '+' + phone;
+                const pass = document.getElementById('passInput').value;
+                const user = appState.users[phone];
+                if (user && user.password === pass) {
+                    appState.currentUser = phone;
+                    saveState();
+                    setActivePage('wall');
+                } else alert('Неверный номер или пароль');
+            };
+            document.getElementById('regLink').onclick = renderRegister;
+        }
+
+        function renderRegister() {
+            let verificationCode = '';
+            mainContent.innerHTML = 
+                <div style="padding:20px;">
+                    <h2>Регистрация</h2>
+                    <input id="regPhone" placeholder="+7 (___) ___-__-__">
+                    <input type="password" id="regPass" placeholder="Пароль">
+                    <input id="regUser" placeholder="Юзернейм">
+                    <button id="regBtn">Далее</button>
+                    <div id="verifyBlock" class="hidden">
+                        <p>Код подтверждения отправлен ботом @verifybot</p>
+                        <input id="verifyCode" placeholder="Введите код">
+                        <button id="verifyBtn">Подтвердить</button>
+                    </div>
+                    <button class="secondary" id="backLogin">Назад</button>
+                </div>
+            ;
+            document.getElementById('regBtn').onclick = () => {
+                const phone = document.getElementById('regPhone').value.replace(/[\s()-]/g, '');
+                const pass = document.getElementById('regPass').value;
+                const username = document.getElementById('regUser').value.trim();
+                if (!phone  !pass  !username) return alert('Заполните поля');
+                if (appState.users[phone]) return alert('Номер занят');
+[11.07.2026 22:18] its320gf: verificationCode = Math.floor(1000 + Math.random() * 9000).toString();
+                alert('Бот @verifybot отправил код: ' + verificationCode);
+                document.getElementById('verifyBlock').classList.remove('hidden');
+            };
+            document.getElementById('verifyBtn').onclick = () => {
+                const inputCode = document.getElementById('verifyCode').value;
+                if (inputCode === verificationCode) {
+                    const phone = document.getElementById('regPhone').value.replace(/[\s()-]/g, '');
+                    const pass = document.getElementById('regPass').value;
+                    const username = document.getElementById('regUser').value.trim();
+                    appState.users[phone] = {
+                        phone, password: pass, username, displayName: username,
+                        avatar: '😊', balance: 100, subscription: null,
+                        ownedNFTs: [], gifts: [], usernames: [username],
+                        stories: [], music: [], files: [], contacts: []
+                    };
+                    appState.currentUser = phone;
+                    saveState();
+                    setActivePage('wall');
+                } else alert('Неверный код');
+            };
+            document.getElementById('backLogin').onclick = renderLogin;
+        }
+
+        function renderWall() {
+            const user = appState.currentUser ? appState.users[appState.currentUser] : null;
+            let html = '';
+            if (user) {
+                html += <div class="card"><textarea id="postText" placeholder="Что нового?"></textarea><button id="createPost">Опубликовать</button></div>;
+            }
+            html += '<div id="postsContainer"></div>';
+            mainContent.innerHTML = html;
+            if (user) {
+                document.getElementById('createPost').onclick = () => {
+                    const text = document.getElementById('postText').value.trim();
+                    if (!text) return;
+                    appState.posts.push({
+                        id: 'p'+Date.now(), author: appState.currentUser, text, time: Date.now(), likes: []
+                    });
+                    saveState();
+                    renderWall();
+                };
+            }
+            const postsDiv = document.getElementById('postsContainer');
+            postsDiv.innerHTML = appState.posts.slice().reverse().map(p => {
+                const author = appState.users[p.author];
+                return <div class="post">
+                    <div class="post-header">
+                        <div class="avatar">${author?.avatar||'👤'}</div>
+                        <b>${author?.displayName||'Неизвестный'}</b>
+                    </div>
+                    <div>${p.text}</div>
+                    <small>${new Date(p.time).toLocaleString()}</small>
+                    <button class="secondary" style="width:auto; padding:4px 12px;" data-postid="${p.id}">❤️ ${p.likes.length}</button>
+                </div>;
+            }).join('');
+            document.querySelectorAll('[data-postid]').forEach(btn => {
+                btn.onclick = () => {
+                    if (!appState.currentUser) return alert('Войдите');
+                    const post = appState.posts.find(p => p.id === btn.dataset.postid);
+                    if (post && !post.likes.includes(appState.currentUser)) {
+                        post.likes.push(appState.currentUser);
+                        saveState();
+                        renderWall();
+                    }
+                };
+            });
+        }
+
+        function renderProfile() {
+            const user = appState.users[appState.currentUser];
+            if (!user) { renderLogin(); return; }
+            mainContent.innerHTML = `
+[11.07.2026 22:18] its320gf: <div class="card">
+                    <div style="font-size:50px; text-align:center;">${user.avatar}</div>
+                    <h3>${user.displayName} (@${user.username})</h3>
+                    <p>📱 ${user.phone}</p>
+                    <p>🥕 Баланс: ${user.balance === Infinity ? '∞' : user.balance}</p>
+                    <p>Подписка: ${user.subscription === 'eternal' ? 'Вечная' : (user.subscription || 'Нет')}</p>
+                    <div><b>NFT:</b> ${user.ownedNFTs.join(', ') || 'нет'}</div>
+                    <div><b>Подарки:</b> ${user.gifts.join(', ') || 'нет'}</div>
+                    <button id="setAvatar">Сменить аватар</button>
+                    <button id="addStory">Добавить Stories</button>
+                    <button id="addMusic">Добавить музыку</button>
+                    <button id="logoutBtn" class="secondary">Выйти</button>
+                </div>
+            ;
+            document.getElementById('setAvatar').onclick = () => {
+                const a = prompt('Эмодзи аватар:'); if (a) { user.avatar = a; saveState(); renderProfile(); }
+            };
+            document.getElementById('addStory').onclick = () => {
+                const s = prompt('Текст stories:'); if (s) { user.stories.push(s); saveState(); }
+            };
+            document.getElementById('addMusic').onclick = () => {
+                const m = prompt('Название трека:'); if (m) { user.music.push(m); saveState(); }
+            };
+            document.getElementById('logoutBtn').onclick = () => {
+                appState.currentUser = null; saveState(); setActivePage('wall');
+            };
+        }
+
+        function renderMessagesList() {
+            const user = appState.users[appState.currentUser];
+            if (!user) { renderLogin(); return; }
+            let html = <div style="display:flex; gap:8px;"><input id="searchInput" placeholder="🔍 Поиск..." style="flex:1;"><button id="createBtn" style="width:auto;">+ Создать</button></div>;
+            html += <div id="chatListContainer"></div>;
+            mainContent.innerHTML = html;
+            document.getElementById('createBtn').onclick = showCreateDialog;
+
+            const filterAndRender = (query = '') => {
+                const q = query.toLowerCase();
+                let filteredChannels = appState.channels.filter(c => c.name.toLowerCase().includes(q) || (c.username||'').toLowerCase().includes(q));
+                let userChats = Object.entries(appState.chats).filter(([id, c]) => c.participants.includes(appState.currentUser));
+                let filteredChats = userChats.filter(([id, c]) => {
+                    const other = c.participants.find(p => p !== appState.currentUser);
+                    const otherUser = appState.users[other];
+                    return otherUser && (otherUser.displayName.toLowerCase().includes(q) || otherUser.username.toLowerCase().includes(q));
+                });
+                let listHtml = '';
+                if (filteredChannels.length) {
+                    listHtml += '<div style="font-weight:600;">📢 Каналы</div>';
+                    filteredChannels.forEach(ch => listHtml += <div class="chat-item" data-chatid="${ch.id}" data-type="channel"><div class="avatar">${ch.avatar}</div><div><b>${ch.name}</b> @${ch.username||''}</div></div>);
+                }
+                if (filteredChats.length) {
+                    listHtml += '<div style="font-weight:600;">💬 Личные чаты</div>';
+                    filteredChats.forEach(([id, c]) => {
+                        const other = c.participants.find(p => p !== appState.currentUser);
+                        const otherUser = appState.users[other];
+                        listHtml += <div class="chat-item" data-chatid="${id}" data-type="private"><div class="avatar">${otherUser?.av'👤'}</div><div><b>${otherUser?.displayNameme||'?'}</b> @${otherUser?.username||''}</div></div>`;
+[11.07.2026 22:18] its320gf: });
+                }
+                if (!listHtml) listHtml = '<div style="color:gray;">Ничего не найдено</div>';
+                document.getElementById('chatListContainer').innerHTML = listHtml;
+                document.querySelectorAll('#chatListContainer .chat-item').forEach(el => {
+                    el.onclick = () => openChat(el.dataset.chatid, el.dataset.type);
+                });
+            };
+            document.getElementById('searchInput').oninput = (e) => filterAndRender(e.target.value);
+            filterAndRender();
+        }
+
+        function showCreateDialog() {
+            mainContent.innerHTML = 
+                <div class="card">
+                    <h3>Создать</h3>
+                    <button id="createChannelBtn">📢 Новый канал</button>
+                    <button id="createPrivateChatBtn">💬 Новый чат</button>
+                    <button class="secondary" id="backMessages">Назад</button>
+                </div>
+            ;
+            document.getElementById('backMessages').onclick = () => renderMessagesList();
+            document.getElementById('createChannelBtn').onclick = () => {
+                const name = prompt('Название канала:');
+                if (name) {
+                    const username = prompt('Юзернейм канала (без @):');
+                    const av = prompt('Эмодзи аватар:') || '📢';
+                    appState.channels.push({
+                        id: 'ch'+Date.now(), name, username, avatar: av,
+                        owner: appState.currentUser, admins: [appState.currentUser], messages: []
+                    });
+                    saveState(); renderMessagesList();
+                }
+            };
+            document.getElementById('createPrivateChatBtn').onclick = () => {
+                const username = prompt('Юзернейм собеседника:');
+                if (username) {
+                    const target = Object.values(appState.users).find(u => u.username === username);
+                    if (!target) return alert('Пользователь не найден');
+                    if (target.phone === appState.currentUser) return alert('Нельзя с собой');
+                    const participants = [appState.currentUser, target.phone].sort();
+                    const chatId = 'priv_'+participants.join('_');
+                    if (!appState.chats[chatId]) { appState.chats[chatId] = { participants, messages: [] }; saveState(); }
+                    openChat(chatId, 'private');
+                }
+            };
+        }
+
+        function openChat(chatId, type) {
+            if (type === 'channel') {
+                const ch = appState.channels.find(c => c.id === chatId);
+                if (ch) renderChannelView(ch);
+            } else if (type === 'private') {
+                const chat = appState.chats[chatId];
+                if (chat) {
+                    const other = chat.participants.find(p => p !== appState.currentUser);
+                    renderPrivateChat(chatId, appState.users[other]);
+                }
+            }
+        }
+
+        function renderChannelView(channel) {
+            const isAdmin = channel.admins.includes(appState.currentUser);
+            mainContent.innerHTML = 
+                <div><button class="secondary" id="backFromChat">← Назад</button></div>
+                <div class="card">
+                    <div style="text-align:center; font-size:48px;">${channel.avatar}</div>
+                    <h3>${channel.name} @${channel.username||''}</h3>
+                    <div id="channelMessages" style="max-height:200px; overflow-y:auto;"></div>
+                    ${isAdmin ? <div style="display:flex;"><input id="msgInput" placeholder="Сообщение..."><button id="sendMsgBtn">➤</button></div> : '<p style="color:gray;">Только админы могут писать</p>'}
+                </div>;
+[11.07.2026 22:18] its320gf: document.getElementById('backFromChat').onclick = () => renderMessagesList();
+            const msgDiv = document.getElementById('channelMessages');
+            updateMessages(msgDiv, channel.messages);
+            if (isAdmin) setupMessageInput(channel.id, 'channel');
+        }
+
+        function renderPrivateChat(chatId, otherUser) {
+            if (!otherUser) return;
+            mainContent.innerHTML = 
+                <div><button class="secondary" id="backFromChat">← Назад</button></div>
+                <div class="card">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <div class="avatar">${otherUser.avatar}</div>
+                        <b>${otherUser.displayName} (@${otherUser.username})</b>
+                    </div>
+                    <div id="privateMessages" style="max-height:250px; overflow-y:auto;"></div>
+                    <div style="display:flex;"><input id="msgInput" placeholder="Сообщение..."><button id="sendMsgBtn">➤</button></div>
+                    <button id="sendGiftBtn">🎁 Подарить (10🥕)</button>
+                </div>;
+            document.getElementById('backFromChat').onclick = () => renderMessagesList();
+            const chat = appState.chats[chatId];
+            updateMessages(document.getElementById('privateMessages'), chat.messages);
+            setupMessageInput(chatId, 'private');
+            document.getElementById('sendGiftBtn').onclick = () => {
+                const user = appState.users[appState.currentUser];
+                if (user.balance < 10 && user.balance !== Infinity) return alert('Мало морковок');
+                if (user.balance !== Infinity) user.balance -= 10;
+                otherUser.gifts.push(🎁 Подарок от ${user.displayName});
+                chat.messages.push({ from:'system', text: ${user.displayName} подарил подарок!, time: new Date().toISOString() });
+                saveState();
+                updateMessages(document.getElementById('privateMessages'), chat.messages);
+            };
+        }
+
+        function updateMessages(container, messages) {
+            container.innerHTML = messages.map(m => <div><b>${m.from === appState.currentUser ? 'Вы' : (appState.users[m.from]?.displayName || m.from)}:</b> ${m.text}</div>).join('');
+        }
+
+        function setupMessageInput(chatId, type) {
+            const input = document.getElementById('msgInput');
+            const btn = document.getElementById('sendMsgBtn');
+            const send = () => {
+                const text = input.value.trim();
+                if (!text) return;
+                if (type === 'channel') {
+                    const ch = appState.channels.find(c => c.id === chatId);
+                    if (ch) ch.messages.push({ from: appState.currentUser, text, time: new Date().toISOString() });
+                } else {
+                    const chat = appState.chats[chatId];
+                    if (chat) chat.messages.push({ from: appState.currentUser, text, time: new Date().toISOString() });
+                }
+                saveState();
+                input.value = '';
+                const container = document.getElementById(type === 'channel' ? 'channelMessages' : 'privateMessages');
+                if (container) {
+                    const messages = type === 'channel' ? appState.channels.find(c => c.id === chatId)?.messages : appState.chats[chatId]?.messages;
+                    updateMessages(container, messages);
+                }
+            };
+            btn.onclick = send;
+            input.onkeypress = e => { if (e.key === 'Enter') send(); };
+        }
+
+        function renderMarket() {
+            const user = appState.users[appState.currentUser];
+            if (!user) { renderLogin(); return; }
+            mainContent.innerHTML = 
+                <div class="card">
+                    <h3>🏷️ Маркет юзернеймов</h3>
+                    <p>Редкие: kopatich, smesh, smeshchat (заняты)</p>
+                    <p>Ваши: ${user.usernames.join(', ')}</p>
+                </div>;
+        }
+[11.07.2026 22:18] its320gf: function renderSettings() {
+            const user = appState.users[appState.currentUser];
+            if (!user) { renderLogin(); return; }
+            mainContent.innerHTML = 
+                <div class="card">
+                    <h3>⚙️ Настройки</h3>
+                    <p>Здесь можно изменить пароль или номер.</p>
+                    <button id="changePass">Сменить пароль</button>
+                </div>;
+            document.getElementById('changePass').onclick = () => {
+                const newPass = prompt('Новый пароль:');
+                if (newPass) { user.password = newPass; saveState(); alert('Пароль изменён'); }
+            };
+        }
+
+        // Старт
+        if (appState.currentUser && appState.users[appState.currentUser]) {
+            setActivePage('wall');
+        } else {
+            renderLogin();
+            pageTitle.innerText = 'Стена';
+        }
+    })();
+</script>
+</body>
+</html>
